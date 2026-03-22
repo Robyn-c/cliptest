@@ -1,52 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clipStore } from '@/lib/clip-store';
+import { createClient } from '@supabase/supabase-js';
 
-/**
- * Get all clips or delete a specific clip
- */
-export async function GET(request: NextRequest) {
-  try {
-    const clips = clipStore.getClips();
-    return NextResponse.json({ clips });
-  } catch (error) {
-    console.error('[v0] Get clips error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get clips' },
-      { status: 500 }
-    );
+export const runtime = 'nodejs';
+
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
+
+export async function GET() {
+  const admin = getAdmin();
+
+  const { data: files, error } = await admin.storage
+    .from('clips')
+    .list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const clips = (files || [])
+    .filter((f) => f.name.endsWith('.mp4') || f.name.endsWith('.ts'))
+    .map((f) => {
+      const id = f.name.replace(/\.(mp4|ts)$/, '');
+      return {
+        id,
+        title: `Clip ${new Date(f.created_at).toLocaleTimeString()}`,
+        url: `/api/clips/${id}/stream`,
+        duration: 0, // not stored in Supabase metadata
+        createdAt: f.created_at,
+      };
+    });
+
+  return NextResponse.json({ clips });
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const clipId = searchParams.get('id');
-
-    if (!clipId) {
-      return NextResponse.json(
-        { error: 'Clip ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const deleted = clipStore.deleteClip(clipId);
-
-    if (!deleted) {
-      return NextResponse.json(
-        { error: 'Clip not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Clip deleted',
-    });
-  } catch (error) {
-    console.error('[v0] Delete clip error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete clip' },
-      { status: 500 }
-    );
+  const id = request.nextUrl.searchParams.get('id');
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
   }
+
+  const admin = getAdmin();
+
+  // Try both extensions
+  for (const ext of ['mp4', 'ts']) {
+    const { error } = await admin.storage
+      .from('clips')
+      .remove([`${id}.${ext}`]);
+    if (!error) {
+      return NextResponse.json({ success: true });
+    }
+  }
+
+  return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
 }
