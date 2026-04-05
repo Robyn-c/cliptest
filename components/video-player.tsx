@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 
@@ -9,47 +8,52 @@ interface VideoPlayerProps {
   onClipStart?: () => void;
 }
 
+function proxyUrl(url: string) {
+  return `/api/proxy?url=${encodeURIComponent(url)}`;
+}
+
 export function VideoPlayer({ streamUrl, title = 'Live Stream', onClipStart }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !streamUrl) return;
 
+    setIsLoaded(false);
+    setError(null);
+
+    // Route through proxy to avoid CORS issues
+    const proxied = proxyUrl(streamUrl);
     let hls: Hls | null = null;
 
     if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: false,
         lowLatencyMode: true,
-        backBufferLength: 60, // Keep 60 seconds in buffer
+        backBufferLength: 60,
       });
-
-      hls.loadSource(streamUrl);
+      hls.loadSource(proxied);
       hls.attachMedia(video);
-
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('[v0] HLS stream loaded');
+        setIsLoaded(true);
         setError(null);
+        video.play().catch(() => {});
       });
-
-      hls.on(Hls.Events.ERROR, (event, data) => {
+      hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
-          console.error('[v0] HLS error:', data);
-          setError('Stream error: ' + data.response?.statusText || 'Unknown error');
+          setError('Error de stream: ' + (data.response?.statusText || 'Unknown error'));
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
+      video.src = proxied;
+      setIsLoaded(true);
     } else {
       setError('HLS streaming not supported in this browser');
     }
 
-    return () => {
-      hls?.destroy();
-    };
+    return () => { hls?.destroy(); };
   }, [streamUrl]);
 
   return (
@@ -59,21 +63,17 @@ export function VideoPlayer({ streamUrl, title = 'Live Stream', onClipStart }: V
           ref={videoRef}
           className="w-full h-full"
           controls
-          autoPlay
-          muted
           playsInline
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
         />
-        {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <div className="text-center">
-              <div className="text-white text-lg font-medium">{title}</div>
+        {!isLoaded && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <div className="text-center space-y-2">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="text-white/60 text-sm">{title}</div>
             </div>
           </div>
         )}
       </div>
-
       {error && (
         <div className="p-4 bg-destructive/10 border border-destructive/50 text-destructive rounded-lg text-sm">
           {error}

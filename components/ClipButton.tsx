@@ -62,7 +62,7 @@ export function ClipButton({ streamUrl, onClipCreated }: ClipButtonProps) {
         {isBuffering && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Radio className="w-3 h-3 text-red-500 animate-pulse" />
-            <span className="font-mono">{Math.floor(bufferDuration)}s buffered</span>
+            <span className="font-mono">{Math.floor(bufferDuration)}s grabados</span>
           </div>
         )}
         <Button
@@ -72,7 +72,7 @@ export function ClipButton({ streamUrl, onClipCreated }: ClipButtonProps) {
           className="gap-2"
         >
           {starting ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Starting…</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> Iniciando...</>
           ) : (
             <><Scissors className="w-4 h-4" /> Clip</>
           )}

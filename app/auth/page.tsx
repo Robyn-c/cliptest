@@ -44,11 +44,10 @@ export default function AuthPage() {
 
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-primary">
-            <Clapperboard className="w-6 h-6" />
-            <span className="text-xl font-semibold">ClipApp</span>
+            <span className="text-xl font-semibold">Clip App</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            {mode === 'login' ? 'Sign in to your account' : 'Create an account'}
+            {mode === 'login' ? 'Ingresa a tu cuenta' : 'Create an account'}
           </p>
         </div>
 
@@ -66,7 +65,7 @@ export default function AuthPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Password</label>
+              <label className="text-xs font-medium text-muted-foreground">Contraseña</label>
               <Input
                 type="password"
                 placeholder="••••••••"
@@ -91,19 +90,9 @@ export default function AuthPage() {
 
           <Button onClick={handleSubmit} disabled={loading} className="w-full gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {mode === 'login' ? 'Sign in' : 'Create account'}
+            {mode === 'login' ? 'Ingresar' : 'Create account'}
           </Button>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground">
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); setSuccess(null); }}
-            className="text-primary underline underline-offset-2"
-          >
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
       </div>
     </div>
   );

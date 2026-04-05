@@ -5,80 +5,38 @@ import { Loader2, Clapperboard, Radio } from 'lucide-react';
 import { ClipEditor } from './ClipEditor';
 
 interface ClipCreatorProps {
-  streamUrl: string;
   onClipCreated?: (clip: any) => void;
 }
 
-export function ClipCreator({ streamUrl, onClipCreated }: ClipCreatorProps) {
+export function ClipCreator({ onClipCreated }: ClipCreatorProps) {
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferDuration, setBufferDuration] = useState(0);
   const [segmentCount, setSegmentCount] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
-  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const poll = async () => {
     try {
-      const res = await fetch('/api/buffer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ streamUrl, action: 'poll' }),
-      });
+      const res = await fetch('/api/buffer');
       const data = await res.json();
       setBufferDuration(data.totalDuration || 0);
       setSegmentCount(data.segmentCount || 0);
-      setIsBuffering(data.isBuffering ?? true);
+      setIsBuffering(data.isBuffering ?? false);
+      setError(data.error || null);
     } catch {
       // ignore transient errors
     }
   };
 
-  const startPolling = () => {
-    if (pollRef.current) return;
-    pollRef.current = setInterval(poll, 3000);
-  };
-
-  const stopPolling = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  };
-
+  // Poll every 10s — matches the server poll interval, no need to poll faster
   useEffect(() => {
-    return () => stopPolling();
+    poll();
+    pollRef.current = setInterval(poll, 10000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
-
-  const handleCreateClip = async () => {
-    setError(null);
-    setStarting(true);
-    try {
-      // First poll — starts the buffer and fetches initial segments
-      await poll();
-      setIsBuffering(true);
-      startPolling();
-
-      // Wait a few seconds for segments to accumulate before opening editor
-      await new Promise((r) => setTimeout(r, 4000));
-      await poll(); // one more poll to get fresh count
-    } catch {
-      setError('Failed to start buffer. Please try again.');
-      setStarting(false);
-      return;
-    }
-    setStarting(false);
-    setShowEditor(true);
-  };
-
-  const handleClose = () => {
-    setShowEditor(false);
-    // keep buffering in background
-  };
-
-  const handleOpenEditor = () => {
-    setShowEditor(true);
-  };
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -91,16 +49,17 @@ export function ClipCreator({ streamUrl, onClipCreated }: ClipCreatorProps) {
       <div className="space-y-3 p-4 bg-card border border-border rounded-lg">
         <div className="flex gap-2">
           <Button
-            onClick={isBuffering ? handleOpenEditor : handleCreateClip}
-            disabled={starting}
+            onClick={() => setShowEditor(true)}
+            disabled={!isBuffering || bufferDuration < 10}
             className="gap-2 flex-1"
             size="lg"
           >
-            {starting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Buffering…</>
-            ) : (
-              <><Clapperboard className="w-4 h-4" /> {isBuffering ? 'Open Clip Editor' : 'Create Clip'}</>
-            )}
+            <Clapperboard className="w-4 h-4" />
+            {!isBuffering
+              ? 'Connecting to stream...'
+              : bufferDuration < 10
+              ? 'Buffering...'
+              : 'Crear clip'}
           </Button>
         </div>
 
@@ -108,17 +67,17 @@ export function ClipCreator({ streamUrl, onClipCreated }: ClipCreatorProps) {
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <div className="flex items-center gap-1.5">
               <Radio className="w-3 h-3 text-red-500 animate-pulse" />
-              <span>Buffering live stream</span>
+              <span>Grabando stream</span>
             </div>
             <span className="font-mono font-medium text-foreground">
-              {formatTime(bufferDuration)} ({segmentCount} segments)
+              {formatTime(bufferDuration)} ({segmentCount} segmentos)
             </span>
           </div>
         )}
 
-        {!isBuffering && !starting && (
+        {!isBuffering && !error && (
           <p className="text-xs text-muted-foreground px-1">
-            Click &quot;Create Clip&quot; to start buffering — then trim your clip in the editor.
+            Conectando al stream...
           </p>
         )}
 
@@ -131,10 +90,9 @@ export function ClipCreator({ streamUrl, onClipCreated }: ClipCreatorProps) {
 
       {showEditor && (
         <ClipEditor
-          streamUrl={streamUrl}
           bufferDuration={bufferDuration}
           isBuffering={isBuffering}
-          onClose={handleClose}
+          onClose={() => setShowEditor(false)}
           onClipCreated={(clip) => {
             setShowEditor(false);
             onClipCreated?.(clip);

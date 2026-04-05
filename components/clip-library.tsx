@@ -56,14 +56,14 @@ export function ClipLibrary({ refreshTrigger }: ClipLibraryProps) {
   };
 
   if (loading && clips.length === 0) {
-    return <div className="text-center py-8 text-muted-foreground">Loading clips...</div>;
+    return <div className="text-center py-8 text-muted-foreground">Cargando clips...</div>;
   }
 
   if (clips.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <div className="text-lg font-medium mb-2">No clips yet</div>
-        <div className="text-sm">Create your first clip using the button above</div>
+        <div className="text-lg font-medium mb-2">No hay clips todavía</div>
+        <div className="text-sm">Crea tu primer clip usando el botón de arriba</div>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export function ClipLibrary({ refreshTrigger }: ClipLibraryProps) {
               onClick={() => handleDelete(clip.id)}
             >
               <Trash2 className="w-4 h-4" />
-              Delete
+              Borrar
             </Button>
           </div>
         </div>

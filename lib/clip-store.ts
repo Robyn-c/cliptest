@@ -5,7 +5,6 @@ export interface StoredClip {
   url: string;
   duration: number;
   createdAt: string; // ISO string
-  streamUrl: string;
 }
 
 class ClipStore {
