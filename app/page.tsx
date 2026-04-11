@@ -6,7 +6,7 @@ import { ClipCreator } from '@/components/clip-creator';
 import { ClipLibrary } from '@/components/clip-library';
 
 // Hardcoded — single stream app, no need for env var complexity
-const STREAM_URL = 'https://unlimited1-cl-isp.dps.live/atv/atv.smil/playlist.m3u8';
+const STREAM_URL = 'https://saval.grupoz.cl/miradiobkp/live/playlist.m3u8';
 
 export default function Home() {
   const [refreshClips, setRefreshClips] = useState(0);
