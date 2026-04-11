@@ -12,34 +12,17 @@ export async function GET(
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const { data: files } = await admin.storage
-    .from('clips')
-    .list('', { limit: 1000 });
+  const candidates = [`${id}.mp4`, `${id}.ts`];
 
-  const match = files?.find(
-    (f) => f.name === `${id}.mp4` || f.name === `${id}.ts`
-  );
+  for (const name of candidates) {
+    const { data, error } = await admin.storage
+      .from('clips')
+      .createSignedUrl(name, 3600);
 
-  if (!match) {
-    return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
+    if (!error && data?.signedUrl) {
+      return NextResponse.redirect(data.signedUrl, { status: 302 });
+    }
   }
 
-  const { data, error } = await admin.storage
-    .from('clips')
-    .download(match.name);
-
-  if (error || !data) {
-    return NextResponse.json({ error: 'Download failed' }, { status: 500 });
-  }
-
-  const isTs = match.name.endsWith('.ts');
-  const contentType = isTs ? 'video/mp2t' : 'video/mp4';
-
-  return new NextResponse(data, {
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': 'private, max-age=3600',
-      'Accept-Ranges': 'bytes',
-    },
-  });
+  return NextResponse.json({ error: 'Clip not found' }, { status: 404 });
 }
